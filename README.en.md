@@ -1,33 +1,8 @@
 # 📋 Clipboard Image Watcher
 
-<div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Monaco, Consolas, monospace; color: #e6e6e6; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);">
-  <div style="background: #2d2d30; padding: 10px; border-radius: 6px 6px 0 0; border: 1px solid #404040; display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888;">
-    <div style="color: #f97316;">🔥</div>
-    <span>Welcome to Claude Code!</span>
-    <div style="margin-left: auto; color: #666; font-size: 10px;">
-      Enter to confirm · Esc to exit
-    </div>
-  </div>
-  <div style="padding: 15px; background: #1a1a1a; border-radius: 0 0 6px 6px; border: 1px solid #404040; border-top: none;">
-    <div style="color: #888; font-size: 11px; margin-bottom: 15px;">
-      /help for help, /status for your current setup<br>
-      <br>
-      cwd: C:\Users\yourname
-    </div>
-    <div style="border-top: 1px solid #333; margin: 15px 0;"></div>
-    <div style="display: flex; align-items: center; margin-top: 20px;">
-      <span style="color: #4a9eff; margin-right: 8px;">&gt;</span>
-      <span style="color: #f0f0f0; background: #2d2d30; padding: 2px 6px; border-radius: 3px;">[Image #1]</span>
-      <span style="color: #888; margin-left: 5px; animation: blink 1s infinite;">▊</span>
-    </div>
-  </div>
-</div>
-<style>
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-</style>
+<picture>
+    <img src="./doc/header.svg">
+</picture>
 
 English | [中文](README.md)
 
