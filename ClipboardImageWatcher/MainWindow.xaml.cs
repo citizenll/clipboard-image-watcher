@@ -5,6 +5,7 @@ using System.IO;
 using System.Windows.Media.Imaging;
 using System.Linq;
 using System.Reflection;
+using System.Windows.Media;
 using Timer = System.Timers.Timer;
 
 namespace ClipboardImageWatcher;
@@ -20,6 +21,8 @@ public partial class MainWindow : Window
     private NotifyIcon? _notifyIcon;
     private ClipboardMonitor? _clipboardMonitor;
     private Timer? _cleanupTimer;
+    private Timer? _processingTimer;
+    private BitmapSource? _pendingImage;
     private static readonly string LogFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt");
 
     private void Log(string message)
@@ -140,6 +143,363 @@ public partial class MainWindow : Window
         }
     }
 
+    private bool IsMemoryImage()
+    {
+        try
+        {
+            // Check various clipboard formats that indicate file-based sources
+            // FileDropList indicates files were copied from explorer
+            if (System.Windows.Clipboard.ContainsFileDropList())
+            {
+                return false;
+            }
+
+            // Check for file-based clipboard formats
+            var dataObject = System.Windows.Clipboard.GetDataObject();
+            if (dataObject != null)
+            {
+                // Common file-based formats
+                string[] fileFormats = {
+                    "FileName",           // Single file name
+                    "FileNameW",          // Unicode file name
+                    "Shell IDList Array", // Shell object
+                    "Preferred DropEffect" // File operation context
+                };
+
+                foreach (var format in fileFormats)
+                {
+                    if (dataObject.GetDataPresent(format))
+                    {
+                        Log($"Detected file-based clipboard format: {format}");
+                        return false;
+                    }
+                }
+            }
+
+            Log("Clipboard contains memory-based image (likely screenshot)");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log($"Error checking clipboard format: {ex.Message}");
+            // Default to processing if we can't determine the source
+            return true;
+        }
+    }
+
+    private void SaveImageWithCompatibility(BitmapSource image, string filePath)
+    {
+        Log($"Attempting to save image: {image.Format}, {image.PixelWidth}x{image.PixelHeight}, HasAlpha: {image.Format.ToString().Contains("A")}");
+        
+        // Analyze pixel data to detect transparent/blank images
+        try
+        {
+            AnalyzeImagePixelData(image);
+        }
+        catch (Exception ex)
+        {
+            Log($"Pixel analysis failed: {ex.Message}");
+        }
+        
+        try
+        {
+            // Method 1: Try direct clipboard data extraction for better quality
+            if (TrySaveFromClipboardData(filePath))
+            {
+                Log($"Image saved successfully using direct clipboard data");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Direct clipboard data save failed: {ex.Message}, trying standard encoding");
+        }
+        
+        try
+        {
+            // Method 2: Try alternative clipboard format access
+            if (TryAlternativeClipboardAccess(filePath))
+            {
+                Log($"Image saved successfully using alternative clipboard access");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Alternative clipboard access failed: {ex.Message}, trying standard encoding");
+        }
+        
+        try
+        {
+            // Method 3: Try standard PNG encoding
+            var encoder = new PngBitmapEncoder();
+            
+            // Ensure image has proper format - convert if needed
+            var convertedImage = ConvertToCompatibleFormat(image);
+            encoder.Frames.Add(BitmapFrame.Create(convertedImage));
+            
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                encoder.Save(stream);
+            }
+            
+            Log($"Image saved successfully using standard PNG encoder");
+        }
+        catch (Exception ex)
+        {
+            Log($"Standard PNG encoding failed: {ex.Message}, trying alternative method");
+            
+            try
+            {
+                // Method 3: Convert to bitmap and save using System.Drawing
+                SaveImageUsingDrawing(image, filePath);
+                Log($"Image saved successfully using System.Drawing fallback");
+            }
+            catch (Exception ex2)
+            {
+                Log($"All image saving methods failed: {ex2.Message}");
+                throw;
+            }
+        }
+    }
+
+    private bool TryAlternativeClipboardAccess(string filePath)
+    {
+        try
+        {
+            var dataObject = System.Windows.Clipboard.GetDataObject();
+            if (dataObject == null) return false;
+            
+            // Try System.Drawing.Bitmap format directly
+            if (dataObject.GetDataPresent("System.Drawing.Bitmap"))
+            {
+                var drawingBitmap = dataObject.GetData("System.Drawing.Bitmap") as System.Drawing.Bitmap;
+                if (drawingBitmap != null)
+                {
+                    Log($"Got System.Drawing.Bitmap: {drawingBitmap.Width}x{drawingBitmap.Height}, format: {drawingBitmap.PixelFormat}");
+                    drawingBitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+                    Log("Saved using System.Drawing.Bitmap format");
+                    return true;
+                }
+            }
+            
+            // Try standard Bitmap format
+            if (dataObject.GetDataPresent("Bitmap"))
+            {
+                var bitmapData = dataObject.GetData("Bitmap");
+                Log($"Got Bitmap data type: {bitmapData?.GetType().Name}");
+                
+                if (bitmapData is System.Drawing.Bitmap drawingBmp)
+                {
+                    Log($"Converting Bitmap to System.Drawing.Bitmap: {drawingBmp.Width}x{drawingBmp.Height}");
+                    drawingBmp.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+                    Log("Saved using converted Bitmap format");
+                    return true;
+                }
+                else if (bitmapData is BitmapSource wpfBitmap)
+                {
+                    Log($"Converting WPF BitmapSource: {wpfBitmap.PixelWidth}x{wpfBitmap.PixelHeight}");
+                    // Use our existing drawing method
+                    SaveImageUsingDrawing(wpfBitmap, filePath);
+                    Log("Saved using WPF BitmapSource conversion");
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log($"Error in TryAlternativeClipboardAccess: {ex.Message}");
+            return false;
+        }
+    }
+
+    private bool TrySaveFromClipboardData(string filePath)
+    {
+        try
+        {
+            var dataObject = System.Windows.Clipboard.GetDataObject();
+            if (dataObject == null) return false;
+            
+            // Try PNG format first (Snipaste might use this)
+            if (dataObject.GetDataPresent("PNG"))
+            {
+                var pngData = dataObject.GetData("PNG") as Stream;
+                if (pngData != null)
+                {
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        pngData.CopyTo(fileStream);
+                    }
+                    Log("Saved using PNG clipboard format");
+                    return true;
+                }
+            }
+            
+            // Try DIB (Device Independent Bitmap) format
+            if (dataObject.GetDataPresent("DeviceIndependentBitmap") || dataObject.GetDataPresent("DIB"))
+            {
+                var formatName = dataObject.GetDataPresent("DeviceIndependentBitmap") ? "DeviceIndependentBitmap" : "DIB";
+                var dibData = dataObject.GetData(formatName);
+                if (dibData != null)
+                {
+                    Log($"Found {formatName} data, attempting to convert");
+                    return SaveFromDIBData(dibData, filePath);
+                }
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log($"Error in TrySaveFromClipboardData: {ex.Message}");
+            return false;
+        }
+    }
+
+    private bool SaveFromDIBData(object dibData, string filePath)
+    {
+        try
+        {
+            Log($"Processing DIB data type: {dibData.GetType().Name}");
+            
+            if (dibData is Stream stream)
+            {
+                Log($"DIB stream length: {stream.Length}, position: {stream.Position}");
+                
+                // Reset stream position
+                if (stream.CanSeek)
+                {
+                    stream.Position = 0;
+                }
+                
+                // Try creating bitmap with validation
+                if (stream.Length > 0)
+                {
+                    using (var bitmap = new Bitmap(stream))
+                    {
+                        Log($"Created bitmap from DIB stream: {bitmap.Width}x{bitmap.Height}, format: {bitmap.PixelFormat}");
+                        bitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+                        Log("Saved using DIB stream data");
+                        return true;
+                    }
+                }
+                else
+                {
+                    Log("DIB stream is empty");
+                }
+            }
+            else if (dibData is byte[] bytes)
+            {
+                Log($"DIB byte array length: {bytes.Length}");
+                
+                if (bytes.Length > 0)
+                {
+                    using (var memoryStream = new MemoryStream(bytes))
+                    {
+                        using (var bitmap = new Bitmap(memoryStream))
+                        {
+                            Log($"Created bitmap from DIB bytes: {bitmap.Width}x{bitmap.Height}, format: {bitmap.PixelFormat}");
+                            bitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+                            Log("Saved using DIB byte array data");
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+                    Log("DIB byte array is empty");
+                }
+            }
+            else if (dibData is MemoryStream memStream)
+            {
+                Log($"DIB MemoryStream length: {memStream.Length}, position: {memStream.Position}");
+                
+                // Reset position
+                memStream.Position = 0;
+                
+                if (memStream.Length > 0)
+                {
+                    using (var bitmap = new Bitmap(memStream))
+                    {
+                        Log($"Created bitmap from DIB MemoryStream: {bitmap.Width}x{bitmap.Height}, format: {bitmap.PixelFormat}");
+                        bitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+                        Log("Saved using DIB MemoryStream data");
+                        return true;
+                    }
+                }
+                else
+                {
+                    Log("DIB MemoryStream is empty");
+                }
+            }
+            
+            Log($"DIB data type not supported: {dibData.GetType().Name}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log($"Error processing DIB data: {ex.Message}");
+            return false;
+        }
+    }
+
+    private BitmapSource ConvertToCompatibleFormat(BitmapSource image)
+    {
+        try
+        {
+            // Check if image is already in a compatible format
+            if (image.Format == System.Windows.Media.PixelFormats.Bgra32 || 
+                image.Format == System.Windows.Media.PixelFormats.Bgr32 ||
+                image.Format == System.Windows.Media.PixelFormats.Pbgra32)
+            {
+                return image;
+            }
+
+            // Convert to BGRA32 format for maximum compatibility
+            var converter = new FormatConvertedBitmap();
+            converter.BeginInit();
+            converter.Source = image;
+            converter.DestinationFormat = System.Windows.Media.PixelFormats.Bgra32;
+            converter.EndInit();
+            
+            Log($"Converted image from {image.Format} to {converter.Format}");
+            return converter;
+        }
+        catch (Exception ex)
+        {
+            Log($"Image format conversion failed: {ex.Message}, using original");
+            return image;
+        }
+    }
+
+    private void SaveImageUsingDrawing(BitmapSource bitmapSource, string filePath)
+    {
+        // Convert WPF BitmapSource to System.Drawing.Bitmap
+        using (var memoryStream = new MemoryStream())
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
+            encoder.Save(memoryStream);
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            
+            using (var bitmap = new Bitmap(memoryStream))
+            {
+                // Ensure bitmap has proper pixel format
+                using (var compatibleBitmap = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                {
+                    using (var graphics = Graphics.FromImage(compatibleBitmap))
+                    {
+                        graphics.DrawImage(bitmap, 0, 0);
+                    }
+                    
+                    compatibleBitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+                }
+            }
+        }
+    }
+
     public MainWindow()
     {
         Log("Application starting.");
@@ -186,21 +546,134 @@ public partial class MainWindow : Window
 
     private void OnClipboardChanged(object? sender, EventArgs e)
     {
-        // Only process if it's an in-memory image (like a screenshot) and not a file copy
-        if (System.Windows.Clipboard.ContainsImage() && !System.Windows.Clipboard.ContainsFileDropList())
+        // Only process if it's an in-memory image (like a screenshot) and not from a file
+        if (System.Windows.Clipboard.ContainsImage() && IsMemoryImage())
         {
             var image = System.Windows.Clipboard.GetImage();
             if (image != null)
             {
+                Log($"Clipboard contains memory-based image - Format: {image.Format}, Size: {image.PixelWidth}x{image.PixelHeight}, DPI: {image.DpiX}x{image.DpiY}");
+                AnalyzeClipboardFormats();
+                
+                // Store the image and delay processing to avoid interfering with screenshot tools
+                _pendingImage = image;
+                
+                // Cancel any existing processing timer
+                _processingTimer?.Stop();
+                _processingTimer?.Dispose();
+                
+                // Create a new timer to process the image after a short delay
+                _processingTimer = new Timer(500); // 500ms delay to let screenshot tools finish
+                _processingTimer.Elapsed += ProcessPendingImage;
+                _processingTimer.AutoReset = false;
+                _processingTimer.Start();
+                
+                Log("Processing scheduled for 500ms delay to avoid interfering with screenshot tools");
+            }
+        }
+        else if (System.Windows.Clipboard.ContainsImage())
+        {
+            Log("Clipboard contains image from file source, skipping processing");
+        }
+    }
+
+    private void AnalyzeImagePixelData(BitmapSource image)
+    {
+        try
+        {
+            // Convert to a format we can analyze
+            var convertedImage = new FormatConvertedBitmap(image, System.Windows.Media.PixelFormats.Bgra32, null, 0);
+            
+            // Sample some pixels to check if image is transparent/blank
+            int stride = convertedImage.PixelWidth * 4; // 4 bytes per pixel (BGRA)
+            byte[] pixels = new byte[stride * Math.Min(10, convertedImage.PixelHeight)]; // Sample first 10 rows
+            
+            convertedImage.CopyPixels(pixels, stride, 0);
+            
+            int opaquePixels = 0;
+            int totalSampled = pixels.Length / 4;
+            
+            for (int i = 0; i < pixels.Length; i += 4)
+            {
+                byte alpha = pixels[i + 3]; // Alpha channel
+                if (alpha > 0)
+                {
+                    opaquePixels++;
+                }
+            }
+            
+            double opacityRatio = (double)opaquePixels / totalSampled;
+            Log($"Pixel analysis: {opaquePixels}/{totalSampled} opaque pixels (opacity ratio: {opacityRatio:F2})");
+            
+            if (opacityRatio < 0.01) // Less than 1% opaque pixels
+            {
+                Log("WARNING: Image appears to be mostly transparent - this may result in a blank saved file");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Pixel data analysis error: {ex.Message}");
+        }
+    }
+
+    private void AnalyzeClipboardFormats()
+    {
+        try
+        {
+            var dataObject = System.Windows.Clipboard.GetDataObject();
+            if (dataObject != null)
+            {
+                var formats = dataObject.GetFormats();
+                Log($"Available clipboard formats: {string.Join(", ", formats)}");
+                
+                // Check for specific Snipaste or image formats
+                foreach (var format in formats)
+                {
+                    if (format.Contains("PNG") || format.Contains("Bitmap") || format.Contains("DIB") || format.Contains("CF_"))
+                    {
+                        Log($"Image-related format detected: {format}");
+                        
+                        try
+                        {
+                            var data = dataObject.GetData(format);
+                            if (data != null)
+                            {
+                                Log($"Format {format} contains data type: {data.GetType().Name}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"Failed to read format {format}: {ex.Message}");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Error analyzing clipboard formats: {ex.Message}");
+        }
+    }
+
+    private void ProcessPendingImage(object? sender, EventArgs e)
+    {
+        // Ensure we're on the UI thread for WPF objects
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => ProcessPendingImage(sender, e));
+            return;
+        }
+        
+        try
+        {
+            if (_pendingImage != null)
+            {
+                Log("Processing delayed image capture");
+                
                 CleanupAndMakeSpace();
 
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(image));
                 var filePath = Path.Combine(_storagePath, $"{FilePrefix}{DateTime.Now:yyyyMMddHHmmssfff}.png");
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    encoder.Save(stream);
-                }
+                SaveImageWithCompatibility(_pendingImage, filePath);
 
                 // Replace clipboard memory image with file reference
                 ReplaceClipboardWithFile(filePath);
@@ -211,7 +684,17 @@ public partial class MainWindow : Window
                 // Reset tooltip to default after 3 seconds
                 ResetTooltipAfterDelay();
                 Log($"Image saved to {filePath} and clipboard replaced with file reference");
+                
+                _pendingImage = null;
             }
+            
+            // Clean up timer
+            _processingTimer?.Dispose();
+            _processingTimer = null;
+        }
+        catch (Exception ex)
+        {
+            Log($"Error processing pending image: {ex.Message}");
         }
     }
 
@@ -268,6 +751,8 @@ public partial class MainWindow : Window
 
         _cleanupTimer?.Stop();
         _cleanupTimer?.Dispose();
+        _processingTimer?.Stop();
+        _processingTimer?.Dispose();
         _notifyIcon?.Dispose();
         System.Windows.Application.Current.Shutdown();
     }
@@ -304,6 +789,8 @@ public partial class MainWindow : Window
 
         _cleanupTimer?.Stop();
         _cleanupTimer?.Dispose();
+        _processingTimer?.Stop();
+        _processingTimer?.Dispose();
         _notifyIcon?.Dispose();
         base.OnClosed(e);
     }

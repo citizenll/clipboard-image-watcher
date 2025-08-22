@@ -1,17 +1,58 @@
-# Clipboard Image Watcher
+# 📋 Clipboard Image Watcher
+
+<div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Monaco, Consolas, monospace; color: #e6e6e6; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);">
+  <div style="background: #2d2d30; padding: 10px; border-radius: 6px 6px 0 0; border: 1px solid #404040; display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888;">
+    <div style="color: #f97316;">🔥</div>
+    <span>Welcome to Claude Code!</span>
+    <div style="margin-left: auto; color: #666; font-size: 10px;">
+      Enter to confirm · Esc to exit
+    </div>
+  </div>
+  <div style="padding: 15px; background: #1a1a1a; border-radius: 0 0 6px 6px; border: 1px solid #404040; border-top: none;">
+    <div style="color: #888; font-size: 11px; margin-bottom: 15px;">
+      /help for help, /status for your current setup<br>
+      <br>
+      cwd: C:\Users\yourname
+    </div>
+    <div style="border-top: 1px solid #333; margin: 15px 0;"></div>
+    <div style="display: flex; align-items: center; margin-top: 20px;">
+      <span style="color: #4a9eff; margin-right: 8px;">&gt;</span>
+      <span style="color: #f0f0f0; background: #2d2d30; padding: 2px 6px; border-radius: 3px;">[Image #1]</span>
+      <span style="color: #888; margin-left: 5px; animation: blink 1s infinite;">▊</span>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+</style>
 
 English | [中文](README.md)
 
-A lightweight Windows tray application that automatically monitors clipboard screenshots, saves memory images to local files, and replaces clipboard content with file references to reduce memory usage.
+> Solve the issue where Claude Code CLI cannot paste screenshots in Windows terminal
+
+A lightweight Windows tray application designed to solve the problem of Claude Code CLI not being able to paste memory screenshots in Windows terminal. Automatically converts clipboard memory images to local files, enabling normal screenshot pasting in terminal.
+
+## 🎯 Problem Solved
+
+**Can't paste screenshots in Claude Code CLI?** This happens because terminals can only handle file paths, not binary image data from memory.
+
+**Our Solution:**
+- 📸 Automatically detects memory images in clipboard when you take screenshots
+- 💾 Saves memory images as local PNG files
+- 🔄 Replaces clipboard memory data with file paths
+- ✅ Now you can paste screenshots in Claude Code CLI normally!
 
 ## ✨ Features
 
-- **Automatic Screenshot Detection** - Real-time monitoring of memory images in clipboard (like screenshots)
-- **Smart Memory Management** - Saves memory images as local PNG files and replaces clipboard content with file references
-- **Cache Management** - Keeps maximum of 3 files, each preserved for up to 1 hour
-- **Non-Intrusive Operation** - Pure tray application with no main window, doesn't interrupt workflow
-- **Real-time Feedback** - Tray icon tooltip shows last capture time
-- **Auto Cleanup** - Automatically deletes all cache files when program exits
+- **🎯 Optimized for Claude Code** - Perfectly solves terminal screenshot pasting issue
+- **⚡ Automatic Processing** - Converts screenshots instantly, no manual action needed
+- **🗂️ Smart Cache Management** - Keeps max 3 files, each for 1 hour
+- **👻 Invisible Operation** - Pure tray app that doesn't disturb your workflow
+- **💡 Real-time Feedback** - Mouse hover shows last screenshot time
+- **🧹 Auto Cleanup** - Cleans all temp files when program exits
 
 ## 🚀 Quick Start
 
@@ -22,18 +63,74 @@ A lightweight Windows tray application that automatically monitors clipboard scr
 
 ### Installation & Running
 
-1. Download the latest executable file
-2. Ensure `tray.ico` icon file is in the same directory
-3. Double-click to run `ClipboardImageWatcher.exe`
+1. Download from [Releases](https://github.com/your-username/clipboard-image-watcher/releases)
+2. Download `ClipboardImageWatcher.exe` file  
+3. Double-click to run (icon is embedded, no additional files needed)
 4. The program will display an icon in the system tray
 
 ### Usage
 
-1. **Start Application** - After running, an icon will appear in the system tray
-2. **Take Screenshots** - Use any screenshot tool (like Windows + Shift + S)
-3. **Automatic Processing** - App automatically detects clipboard images and saves them locally
-4. **Paste Usage** - When pasting, local files are used instead of memory images
-5. **Exit Application** - Right-click tray icon and select "Exit"
+#### 🎬 Typical Use Case: Claude Code CLI
+
+<div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Monaco, Consolas, monospace; color: #e6e6e6; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);">
+  <div style="background: #2d2d30; padding: 10px; border-radius: 6px 6px 0 0; border: 1px solid #404040; display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888;">
+    <div style="color: #f97316;">🔥</div>
+    <span>Welcome to Claude Code!</span>
+    <div style="margin-left: auto; color: #666; font-size: 10px;">
+      Enter to confirm · Esc to exit
+    </div>
+  </div>
+  
+  <div style="padding: 15px; background: #1a1a1a; border-radius: 0 0 6px 6px; border: 1px solid #404040; border-top: none;">
+    <div style="color: #888; font-size: 11px; margin-bottom: 15px;">
+      /help for help, /status for your current setup<br>
+      <br>
+      cwd: C:\Users\citizenl
+    </div>
+    
+    <div style="border-top: 1px solid #333; margin: 15px 0;"></div>
+    
+    <div style="color: #888; margin-bottom: 15px;">
+      <strong>Overrides (via env):</strong><br>
+      • API Base URL: http://127.0.0.1:6500
+    </div>
+    
+    <div style="display: flex; align-items: center; margin-top: 20px;">
+      <span style="color: #4a9eff; margin-right: 8px;">&gt;</span>
+      <span style="color: #f0f0f0; background: #2d2d30; padding: 2px 6px; border-radius: 3px;">[Image #1]</span>
+      <span style="color: #888; margin-left: 5px; animation: blink 1s infinite;">▊</span>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+</style>
+
+1. **Start App** - Double-click to run, tray icon appears
+2. **Open Claude Code CLI** - Start Claude Code in your terminal
+3. **Take Screenshot** - Use Windows + Shift + S or any screenshot tool
+4. **Paste to Claude Code** - Press Ctrl+V in Claude Code CLI
+5. **✅ Success!** - Now you can paste and send screenshots in terminal normally
+
+#### 💡 Workflow
+
+```
+Screenshot → Memory Image → Auto Convert → Local File → Terminal Ready ✅
+```
+
+**Without this app:**
+```
+Screenshot → Memory Image → Paste to Terminal → ❌ Fail (Terminal can't handle memory images)
+```
+
+**With this app:**
+```
+Screenshot → Memory Image → Auto Save as File → Paste File Path → ✅ Success!
+```
 
 ## 🔧 How It Works
 
@@ -129,14 +226,31 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter problems or have feature suggestions, please submit them on the [Issues](https://github.com/your-username/clipboard-image-watcher/issues) page.
 
+## ❓ FAQ
+
+### Q: Why can't Claude Code CLI paste screenshots?
+A: Because terminal applications can only handle text and file paths, not binary image data from clipboard memory.
+
+### Q: How does this app solve the problem?
+A: It automatically saves clipboard memory images as local PNG files, then replaces clipboard content with file paths that terminals can recognize and process.
+
+### Q: Which screenshot tools are supported?
+A: All screenshot tools that save images to clipboard, including:
+- Windows + Shift + S (Windows built-in)
+- Snipping Tool
+- Third-party tools like PicPick, Greenshot, etc.
+
+### Q: Will it affect pasting in other applications?
+A: No. When you paste to image editors or other apps, the system automatically loads the image from the file, with identical results.
+
 ## 📊 Version History
 
 - **v1.0.0** - Initial release
-  - Basic clipboard monitoring functionality
-  - Memory image to file conversion
-  - Automatic cache management
-  - Tray icon interface
+  - Optimized for Claude Code CLI
+  - Automatic screenshot conversion
+  - Smart cache management  
+  - Single-file deployment
 
 ---
 
-**Note**: This application only runs on Windows systems, using WPF and Windows Forms technology stack.
+**Designed for Claude Code Users** | Windows Only

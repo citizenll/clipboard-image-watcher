@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dotnet build)",
       "Bash(./ClipboardImageWatcher.exe)",
-      "Bash(dotnet publish:*)"
+      "Bash(dotnet publish:*)",
+      "Bash(dotnet build:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

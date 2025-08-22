@@ -1,17 +1,58 @@
-# 剪贴板图像监视器 (Clipboard Image Watcher)
+# 📋 Clipboard Image Watcher
+
+<div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Monaco, Consolas, monospace; color: #e6e6e6; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);">
+  <div style="background: #2d2d30; padding: 10px; border-radius: 6px 6px 0 0; border: 1px solid #404040; display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888;">
+    <div style="color: #f97316;">🔥</div>
+    <span>Welcome to Claude Code!</span>
+    <div style="margin-left: auto; color: #666; font-size: 10px;">
+      Enter to confirm · Esc to exit
+    </div>
+  </div>
+  <div style="padding: 15px; background: #1a1a1a; border-radius: 0 0 6px 6px; border: 1px solid #404040; border-top: none;">
+    <div style="color: #888; font-size: 11px; margin-bottom: 15px;">
+      /help for help, /status for your current setup<br>
+      <br>
+      cwd: C:\Users\yourname
+    </div>
+    <div style="border-top: 1px solid #333; margin: 15px 0;"></div>
+    <div style="display: flex; align-items: center; margin-top: 20px;">
+      <span style="color: #4a9eff; margin-right: 8px;">&gt;</span>
+      <span style="color: #f0f0f0; background: #2d2d30; padding: 2px 6px; border-radius: 3px;">[Image #1]</span>
+      <span style="color: #888; margin-left: 5px; animation: blink 1s infinite;">▊</span>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+</style>
 
 [English](README.en.md) | 中文
 
-一个轻量级的 Windows 托盘应用程序，自动监控剪贴板中的截图，将内存图像保存到本地文件并用文件引用替换剪贴板内容，从而减少内存占用。
+> 解决 Claude Code CLI 在 Windows 终端无法粘贴截图的问题
+
+一个轻量级的 Windows 托盘应用程序，专门解决 Claude Code CLI 在 Windows 终端中无法粘贴内存截图的问题。自动将剪贴板中的内存图像转换为本地文件，让你可以在终端中正常粘贴截图。
+
+## 🎯 解决的问题
+
+**Claude Code CLI 无法粘贴截图？** 这是因为终端只能处理文件路径，无法直接粘贴内存中的图像数据。
+
+**本应用的解决方案：**
+- 📸 截图时自动检测剪贴板中的内存图像
+- 💾 将内存图像保存为本地 PNG 文件
+- 🔄 用文件路径替换剪贴板中的内存数据
+- ✅ 现在可以在 Claude Code CLI 中正常粘贴截图了！
 
 ## ✨ 功能特点
 
-- **自动截图检测** - 实时监控剪贴板中的内存图像（如屏幕截图）
-- **智能内存管理** - 将内存中的图像保存为本地 PNG 文件，用文件引用替换剪贴板内容
-- **缓存管理** - 最多保存 3 个文件，每个文件最长保存 1 小时
-- **无干扰运行** - 纯托盘应用，无主窗口，不打断工作流程
-- **实时反馈** - 托盘图标工具提示显示最后捕获时间
-- **自动清理** - 程序退出时自动删除所有缓存文件
+- **🎯 专为 Claude Code 优化** - 完美解决终端粘贴截图问题
+- **⚡ 自动处理** - 截图后立即转换，无需手动操作
+- **🗂️ 智能缓存管理** - 最多保存 3 个文件，每个文件保存 1 小时
+- **👻 隐形运行** - 纯托盘应用，不干扰正常工作
+- **💡 实时反馈** - 鼠标悬停显示最后截图时间
+- **🧹 自动清理** - 程序退出时清理所有临时文件
 
 ## 🚀 快速开始
 
@@ -22,18 +63,34 @@
 
 ### 安装运行
 
-1. 下载最新版本的可执行文件
-2. 确保 `tray.ico` 图标文件在同一目录下
-3. 双击运行 `ClipboardImageWatcher.exe`
+1. 从 [Releases](https://github.com/your-username/clipboard-image-watcher/releases) 下载最新版本
+2. 下载 `ClipboardImageWatcher.exe` 文件
+3. 双击运行（托盘图标已内嵌，无需额外文件）
 4. 程序将在系统托盘中显示图标
 
 ### 使用方法
 
-1. **启动应用** - 运行后会在系统托盘显示图标
-2. **截图操作** - 使用任何截图工具（如 Windows + Shift + S）
-3. **自动处理** - 应用自动检测剪贴板中的图像并保存到本地
-4. **粘贴使用** - 粘贴时使用的是本地文件而非内存图像
-5. **退出应用** - 右键托盘图标选择"Exit"
+1. **启动应用** - 双击运行，在系统托盘显示图标
+2. **打开 Claude Code CLI** - 在终端中启动 Claude Code
+3. **截图** - 使用 Windows + Shift + S 或其他截图工具
+4. **粘贴到 Claude Code** - 在 Claude Code CLI 中按 Ctrl+V 粘贴
+5. **✅ 成功！** - 现在可以正常在终端中粘贴和发送截图了
+
+#### 💡 工作流程
+
+```
+截图 → 内存图像 → 自动转换 → 本地文件 → 终端可粘贴 ✅
+```
+
+**不使用本应用：**
+```
+截图 → 内存图像 → 粘贴到终端 → ❌ 失败（终端无法处理内存图像）
+```
+
+**使用本应用：**
+```
+截图 → 内存图像 → 自动保存为文件 → 粘贴文件路径 → ✅ 成功！
+```
 
 ## 🔧 工作原理
 
@@ -129,14 +186,31 @@ cc-paste/
 
 如果遇到问题或有功能建议，请在 [Issues](https://github.com/your-username/clipboard-image-watcher/issues) 页面提交。
 
+## ❓ 常见问题
+
+### Q: 为什么 Claude Code CLI 无法粘贴截图？
+A: 因为终端应用程序只能处理文本和文件路径，无法直接处理剪贴板中的二进制图像数据。
+
+### Q: 这个应用如何解决问题？
+A: 它将剪贴板中的内存图像自动保存为本地PNG文件，然后用文件路径替换剪贴板内容，这样终端就可以识别和处理了。
+
+### Q: 支持哪些截图工具？
+A: 支持所有将图像保存到剪贴板的截图工具，包括：
+- Windows + Shift + S（Windows 内置）
+- Snipping Tool
+- PicPick, Greenshot 等第三方工具
+
+### Q: 会影响其他应用的粘贴功能吗？
+A: 不会。当你粘贴到图像编辑器等应用时，系统会自动从文件加载图像，效果完全一样。
+
 ## 📊 版本历史
 
 - **v1.0.0** - 初始版本
-  - 基本的剪贴板监控功能
-  - 内存图像到文件的转换
-  - 自动缓存管理
-  - 托盘图标界面
+  - 专为 Claude Code CLI 优化
+  - 自动截图转换功能
+  - 智能缓存管理
+  - 单文件发布
 
 ---
 
-**注意**: 本应用仅在 Windows 系统上运行，使用 WPF 和 Windows Forms 技术栈。
+**专为 Claude Code 用户设计** | 仅支持 Windows 系统
